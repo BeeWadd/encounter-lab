@@ -34,13 +34,19 @@ async function ProfileList() {
 
 export default function Home() {
   return (
-    <main>
-      <h1>Encounter Lab</h1>
-      <p>
+    <main className="mx-auto w-full max-w-3x1 px-6 py-12">
+      <h1 className="mb-4 text-4xl font-bold">
+        Encounter Lab
+      </h1>
+      
+      <p className="text-lg leading-relaxed">
         A tool for Dungeon Masters to compare how changes to an encounter affect its difficulty and duration.
       </p>
 
-      <h2>Available profiles</h2>
+      <h2 className="mb-3 mt-10 text-2xl font-semibold">
+        Available profiles
+      </h2>
+      
       <Suspense fallback={<p>Loading profiles...</p>}>
         <ProfileList />
       </Suspense>
