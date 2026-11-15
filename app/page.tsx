@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { createSupabaseClient } from "@/lib/supabase";
+import SimulationDemo from "./simulation-demo";
 
 async function ProfileList() {
   await connection();
@@ -50,6 +51,7 @@ export default function Home() {
       <Suspense fallback={<p>Loading profiles...</p>}>
         <ProfileList />
       </Suspense>
+      <SimulationDemo />
     </main>
   );
 }
