@@ -6,33 +6,40 @@ import type { simulateBatch } from "@/lib/combat/batch";
 type DemoRun = ReturnType<typeof simulateBatch> & {
     trialCount: number;
     roundLimit: number;
+    runId: string;
 };
 
 export default function SimulationDemo() {
     const [result, setResult] = useState<DemoRun | null>(null);
     const [running, setRunning] = useState(false);
     const [error, setError] = useState("");
+    const [runIdToLoad, setRunIdToLoad] = useState("");
 
-    async function runSimulation() {
+    async function requestRun(url: string, method: "POST" | "GET") {
         setRunning(true);
         setError("");
         setResult(null);
 
         try {
-            // The browser requests a run. The route executes the engine on the server.
-            const response = await fetch("/api/simulate", { method: "POST" });
+            // Both actions display the same summary when the server responds.
+            const response = await fetch(url, { method });
             if (!response.ok) {
-                throw new Error("Simulation request failed.");
+                const problem = await response.json();
+                setError(problem.error ?? "The request failed.");
+                return;
             }
 
             const summary: DemoRun = await response.json();
             setResult(summary);
         } catch {
-            setError("Could not run the simulation. Please try again.");
+            setError("Could not reach the server. Please try again.");
         } finally {
-            // Re-enable the button whether the request succeeds or fails.
             setRunning(false);
         }
+    }
+    
+    function runSimulation() {
+        return requestRun("/api/simulate", "POST");
     }
 
     return (
@@ -45,13 +52,36 @@ export default function SimulationDemo() {
                 disabled={running}
                 className="rounded bg-blue-700 px-4 py-2 text-white disabled:opacity-60"
             >
-                {running ? "Running" : "Run Simulation"}
+                {running ? "Working..." : "Run Simulation"}
             </button>
+
+            <div className="mt-4">
+                <label htmlFor="saved-run-id">Saved run ID</label>
+                <input
+                    id="saved-run-id"
+                    className="mx-2 border px-2 py-1"
+                    value={runIdToLoad}
+                    onChange={(event) => setRunIdToLoad(event.target.value)}
+                />
+                <button
+                    type="button"
+                    className="rounded border px-3 py-1 disabled:opacity-60"
+                    disabled={running || !runIdToLoad.trim()}
+                    onClick={() => {
+                        // URLSearchParams encodes the ID value entered by the user.
+                        const query = new URLSearchParams({ runId: runIdToLoad.trim() });
+                        return requestRun(`/api/simulate?${query}`, "GET");
+                    }}
+                >
+                    Load Saved Run
+                </button>
+            </div>
 
             <div className="mt-3" aria-live="polite">
                 {error && <p>{error}</p>}
                 {result && (
                     <ul>
+                        <li>Saved run ID: {result.runId}</li>
                         <li>Trials: {result.trialCount}</li>
                         <li>Adventurer wins: {result.winPercent.a.toFixed(1)}%</li>
                         <li>Practice Opponent wins: {result.winPercent.b.toFixed(1)}%</li>
