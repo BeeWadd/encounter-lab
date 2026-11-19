@@ -18,6 +18,8 @@ export default function SimulationDemo() {
     const [sideBHp, setSideBHp] = useState("10");
     const [sideAArmorClass, setSideAArmorClass] = useState("13");
     const [sideBArmorClass, setSideBArmorClass] = useState("12");
+    const [sideAAttackBonus, setSideAAttackBonus] = useState("3");
+    const [sideBAttackBonus, setSideBAttackBonus] = useState("3");
 
     async function requestRun(url: string, options: RequestInit) {
         setRunning(true);
@@ -51,6 +53,8 @@ export default function SimulationDemo() {
                 sideBHp: Number(sideBHp),
                 sideAArmorClass: Number(sideAArmorClass),
                 sideBArmorClass: Number(sideBArmorClass), 
+                sideAAttackBonus: sideAAttackBonus.trim() === "" ? null : Number(sideAAttackBonus),
+                sideBAttackBonus: sideBAttackBonus.trim() === "" ? null : Number(sideBAttackBonus),
             }),
         });
     }
@@ -61,7 +65,7 @@ export default function SimulationDemo() {
             <p className="mb-3">Adventurer vs. Practice Opponent</p>
             <fieldset disabled={running}>
                 <label>
-                    Adventurer starting HP
+                    Adventurer Starting HP
                     <input
                         type="number" min={1} max={999} step={1}
                         value={sideAHp}
@@ -69,7 +73,7 @@ export default function SimulationDemo() {
                     />
                 </label>
                 <label>
-                    Practice Opponent starting HP
+                    Practice Opponent Starting HP
                     <input
                         type="number" min={1} max={999} step={1}
                         value={sideBHp}
@@ -90,6 +94,22 @@ export default function SimulationDemo() {
                         type="number" min={1} step={1}
                         value={sideBArmorClass}
                         onChange={(event) => setSideBArmorClass(event.currentTarget.value)}
+                        />
+                </label>
+                <label>
+                    Adventurer Attack Bonus
+                    <input
+                        type="number" min={-20} max={20} step={1}
+                        value={sideAAttackBonus}
+                        onChange={(event) => setSideAAttackBonus(event.currentTarget.value)}
+                        />
+                </label>
+                <label>
+                    Practice Opponent Attack Bonus
+                    <input
+                        type="number" min={-20} max={20} step={1}
+                        value={sideBAttackBonus}
+                        onChange={(event) => setSideBAttackBonus(event.currentTarget.value)}
                         />
                 </label>
             </fieldset>

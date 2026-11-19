@@ -44,6 +44,10 @@ function isArmorClass(value: unknown): value is number {
     return typeof value === "number" && Number.isSafeInteger(value) && value >=1;
 }
 
+function isAttackBonus(value: unknown): value is number {
+    return typeof value === "number" && Number.isSafeInteger(value) && value <= 20 && value >= -20;
+}
+
 export async function POST(request: Request) {
     let runEncounter = encounter;
 
@@ -69,7 +73,20 @@ export async function POST(request: Request) {
             (sideBArmorClass !== undefined && !isArmorClass(sideBArmorClass))
         ) {
             return Response.json(
-                { error: "Armor Class must be a positive whole number." }, { status: 400}
+                { error: "Armor Class must be a positive whole number." }, { status: 400 }
+            );
+        }
+
+        const sideAAttackBonus = "sideAAttackBonus" in input ? input.sideAAttackBonus : undefined;
+        const sideBAttackBonus = "sideBAttackBonus" in input ? input.sideBAttackBonus : undefined;
+
+        // Requests can omit these fields and use the preset bonuses.
+        if (
+            (sideAAttackBonus !== undefined && !isAttackBonus(sideAAttackBonus)) ||
+            (sideBAttackBonus !== undefined && !isAttackBonus(sideBAttackBonus))
+        ) {
+            return Response.json(
+                { error: "Attack bonus must be a whole number from -20 to 20."}, { status: 400 },
             );
         }
 
@@ -80,6 +97,7 @@ export async function POST(request: Request) {
                 ...combatant,
                 startingHP: combatant.side === "a" ? sideAHp : sideBHp,
                 armorClass: (combatant.side === "a" ? sideAArmorClass : sideBArmorClass) ?? combatant.armorClass,
+                attackBonus: (combatant.side === "a" ? sideAAttackBonus : sideBAttackBonus) ?? combatant.attackBonus,
             })),
         };
     }
