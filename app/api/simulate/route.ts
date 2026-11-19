@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { simulateBatch } from "@/lib/combat/batch";
 import type { CombatantInput, EncounterInput } from "@/lib/combat/types";
 import { createSupabaseClient } from "@/lib/supabase";
+import { rollDamage } from "@/lib/combat/damage";
 
 const PRACTICE_ENCOUNTER_ID = "2fc5cb48-755c-4d33-a4a9-4e5b52053d72";
 
@@ -48,6 +49,24 @@ function isAttackBonus(value: unknown): value is number {
     return typeof value === "number" && Number.isSafeInteger(value) && value <= 20 && value >= -20;
 }
 
+function isDamageDice(value: unknown): value is string {
+    if (typeof value !== "string") {
+        return false;
+    }
+
+    try {
+        // Reuse the engine's dice rules without consuming the simulation's seed.
+        rollDamage(value, 0, () => 0);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function isDamageModifier(value: unknown): value is number {
+    return typeof value === "number" && Number.isSafeInteger(value) && value <= 20 && value >= -20;
+}
+
 export async function POST(request: Request) {
     let runEncounter = encounter;
 
@@ -90,6 +109,30 @@ export async function POST(request: Request) {
             );
         }
 
+        const sideADamageDice = "sideADamageDice" in input ? input.sideADamageDice : undefined;
+        const sideBDamageDice = "sideBDamageDice" in input ? input.sideBDamageDice : undefined;
+        const sideADamageModifier = "sideADamageModifier"in input ? input.sideADamageModifier : undefined;
+        const sideBDamageModifier = "sideBDamageModifier"in input ? input.sideBDamageModifier : undefined;
+
+        // Requests can omit these fields and use the preset values.
+        if (
+            (sideADamageDice !== undefined && !isDamageDice(sideADamageDice)) ||
+            (sideBDamageDice !== undefined && !isDamageDice(sideBDamageDice))
+        ) {
+            return Response.json(
+                { error: "Use damage dice such as 1d6 or 2d8, with 1-100 dice and 2-100 sides per die."}, { status: 400 },
+            );
+        }
+
+        if (
+            (sideADamageModifier !== undefined && !isDamageModifier(sideADamageModifier)) ||
+            (sideBDamageModifier !== undefined && !isDamageModifier(sideBDamageModifier))
+        ) {
+            return Response.json(
+                { error: "Damage Modifier must be a whole number between -20 and 20."}, { status: 400 },
+            );
+        }
+
         // Copy the preset so each run has its own starting stats.
         runEncounter = {
             ...encounter,
@@ -98,6 +141,8 @@ export async function POST(request: Request) {
                 startingHP: combatant.side === "a" ? sideAHp : sideBHp,
                 armorClass: (combatant.side === "a" ? sideAArmorClass : sideBArmorClass) ?? combatant.armorClass,
                 attackBonus: (combatant.side === "a" ? sideAAttackBonus : sideBAttackBonus) ?? combatant.attackBonus,
+                damageDice: (combatant.side === "a" ? sideADamageDice : sideBDamageDice)?.trim().toLowerCase() ?? combatant.damageDice,
+                damageModifier: (combatant.side === "a" ? sideADamageModifier : sideBDamageModifier) ?? combatant.damageModifier,
             })),
         };
     }

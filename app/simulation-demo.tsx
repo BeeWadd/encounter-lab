@@ -20,6 +20,10 @@ export default function SimulationDemo() {
     const [sideBArmorClass, setSideBArmorClass] = useState("12");
     const [sideAAttackBonus, setSideAAttackBonus] = useState("3");
     const [sideBAttackBonus, setSideBAttackBonus] = useState("3");
+    const [sideADamageDice, setSideADamageDice] = useState("1d6");
+    const [sideBDamageDice, setSideBDamageDice] = useState("1d6");
+    const [sideADamageModifier, setSideADamageModifier] = useState("2");
+    const [sideBDamageModifier, setSideBDamageModifier] = useState("2");
 
     async function requestRun(url: string, options: RequestInit) {
         setRunning(true);
@@ -55,6 +59,10 @@ export default function SimulationDemo() {
                 sideBArmorClass: Number(sideBArmorClass), 
                 sideAAttackBonus: sideAAttackBonus.trim() === "" ? null : Number(sideAAttackBonus),
                 sideBAttackBonus: sideBAttackBonus.trim() === "" ? null : Number(sideBAttackBonus),
+                sideADamageDice: sideADamageDice.trim(),
+                sideBDamageDice: sideBDamageDice.trim(),
+                sideADamageModifier: sideADamageModifier.trim() === "" ? null : Number(sideADamageModifier),
+                sideBDamageModifier: sideBDamageModifier.trim() === "" ? null : Number(sideBDamageModifier),
             }),
         });
     }
@@ -110,6 +118,38 @@ export default function SimulationDemo() {
                         type="number" min={-20} max={20} step={1}
                         value={sideBAttackBonus}
                         onChange={(event) => setSideBAttackBonus(event.currentTarget.value)}
+                        />
+                </label>
+                <label>
+                    Adventurer Damage Dice
+                    <input
+                        type="text"
+                        value={sideADamageDice}
+                        onChange={(event) => setSideADamageDice(event.currentTarget.value)}
+                        />
+                </label>
+                <label>
+                    Adventurer Damage Modifier
+                    <input
+                        type="number" min={-20} max={20} step={1}
+                        value={sideADamageModifier}
+                        onChange={(event) => setSideADamageModifier(event.currentTarget.value)}
+                        />
+                </label>
+                <label>
+                    Practice Opponent Damage Dice
+                    <input
+                        type="text"
+                        value={sideBDamageDice}
+                        onChange={(event) => setSideBDamageDice(event.currentTarget.value)}
+                        />
+                </label>
+                <label>
+                    Practice Opponent Damage Modifier
+                    <input
+                        type="number" min={-20} max={20} step={1}
+                        value={sideBDamageModifier}
+                        onChange={(event) => setSideBDamageModifier(event.currentTarget.value)}
                         />
                 </label>
             </fieldset>
