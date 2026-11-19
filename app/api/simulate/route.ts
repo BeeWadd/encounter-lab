@@ -35,11 +35,59 @@ const encounter: EncounterInput = {
     sideBTargeting: "random",
 };
 
-export async function POST() {
+function isStartingHP(value: unknown): value is number {
+    return typeof value === "number" && Number.isInteger(value) &&
+        value >= 1 && value <= 999;
+}
+
+function isArmorClass(value: unknown): value is number {
+    return typeof value === "number" && Number.isSafeInteger(value) && value >=1;
+}
+
+export async function POST(request: Request) {
+    let runEncounter = encounter;
+
+    // A bodyless request still runs the original practce preset.
+    if (request.body !== null) {
+        const input: unknown = await request.json().catch(() => null);
+
+        if (
+            input === null || typeof input !== "object" || !("sideAHp" in input) || !("sideBHp" in input) || !isStartingHP(input.sideAHp) || !isStartingHP(input.sideBHp)
+        ) {
+            return Response.json(
+                { error: "Starting HP must be a whole number from 1 to 999 for both sides." }, { status: 400 },
+            );
+        }
+
+        const { sideAHp, sideBHp } = input;
+        // HP-only requests can still use the preset Armor Class values.
+        const sideAArmorClass = "sideAArmorClass" in input ? input.sideAArmorClass : undefined;
+        const sideBArmorClass = "sideBArmorClass" in input ? input.sideBArmorClass : undefined;
+
+        if (
+            (sideAArmorClass !== undefined && !isArmorClass(sideAArmorClass)) ||
+            (sideBArmorClass !== undefined && !isArmorClass(sideBArmorClass))
+        ) {
+            return Response.json(
+                { error: "Armor Class must be a positive whole number." }, { status: 400}
+            );
+        }
+
+        // Copy the preset so each run has its own starting stats.
+        runEncounter = {
+            ...encounter,
+            combatants: encounter.combatants.map((combatant) => ({
+                ...combatant,
+                startingHP: combatant.side === "a" ? sideAHp : sideBHp,
+                armorClass: (combatant.side === "a" ? sideAArmorClass : sideBArmorClass) ?? combatant.armorClass,
+            })),
+        };
+    }
+    
     const trialCount = 100;
     const roundLimit = 20;
     const seed = randomUUID();
-    const summary = simulateBatch(encounter, trialCount, roundLimit, seed);
+    const summary = simulateBatch(runEncounter, trialCount, roundLimit, seed);
     const supabase = createSupabaseClient();
 
     // Save the exact inputs and results together so this run can be reopened.
@@ -52,7 +100,7 @@ export async function POST() {
             engine_version: "0.1.0",
             trial_count: trialCount,
             round_limit: roundLimit,
-            input_snapshot: encounter,
+            input_snapshot: runEncounter,
             result_summary: summary,
         })
         .select("id")

@@ -14,15 +14,19 @@ export default function SimulationDemo() {
     const [running, setRunning] = useState(false);
     const [error, setError] = useState("");
     const [runIdToLoad, setRunIdToLoad] = useState("");
+    const [sideAHp, setSideAHp] = useState("12");
+    const [sideBHp, setSideBHp] = useState("10");
+    const [sideAArmorClass, setSideAArmorClass] = useState("13");
+    const [sideBArmorClass, setSideBArmorClass] = useState("12");
 
-    async function requestRun(url: string, method: "POST" | "GET") {
+    async function requestRun(url: string, options: RequestInit) {
         setRunning(true);
         setError("");
         setResult(null);
 
         try {
             // Both actions display the same summary when the server responds.
-            const response = await fetch(url, { method });
+            const response = await fetch(url, options);
             if (!response.ok) {
                 const problem = await response.json();
                 setError(problem.error ?? "The request failed.");
@@ -39,13 +43,56 @@ export default function SimulationDemo() {
     }
     
     function runSimulation() {
-        return requestRun("/api/simulate", "POST");
+        return requestRun("/api/simulate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                sideAHp: Number(sideAHp), 
+                sideBHp: Number(sideBHp),
+                sideAArmorClass: Number(sideAArmorClass),
+                sideBArmorClass: Number(sideBArmorClass), 
+            }),
+        });
     }
 
     return (
         <section className="mt-10">
             <h2 className="mb-3 text-2x1 font-semibold">Practice simulation</h2>
             <p className="mb-3">Adventurer vs. Practice Opponent</p>
+            <fieldset disabled={running}>
+                <label>
+                    Adventurer starting HP
+                    <input
+                        type="number" min={1} max={999} step={1}
+                        value={sideAHp}
+                        onChange={(event) => setSideAHp(event.currentTarget.value)}
+                    />
+                </label>
+                <label>
+                    Practice Opponent starting HP
+                    <input
+                        type="number" min={1} max={999} step={1}
+                        value={sideBHp}
+                        onChange={(event) => setSideBHp(event.currentTarget.value)}
+                    />
+                </label>
+                <label>
+                    Adventurer Armor Class
+                    <input
+                        type="number" min={1} step={1}
+                        value={sideAArmorClass}
+                        onChange={(event) => setSideAArmorClass(event.currentTarget.value)}
+                        />
+                </label>
+                <label>
+                    Practice Opponent Armor Class
+                    <input
+                        type="number" min={1} step={1}
+                        value={sideBArmorClass}
+                        onChange={(event) => setSideBArmorClass(event.currentTarget.value)}
+                        />
+                </label>
+            </fieldset>
             <button
                 type="button"
                 onClick={runSimulation}
@@ -70,7 +117,7 @@ export default function SimulationDemo() {
                     onClick={() => {
                         // URLSearchParams encodes the ID value entered by the user.
                         const query = new URLSearchParams({ runId: runIdToLoad.trim() });
-                        return requestRun(`/api/simulate?${query}`, "GET");
+                        return requestRun(`/api/simulate?${query}`, { method: "GET" });
                     }}
                 >
                     Load Saved Run
