@@ -67,6 +67,14 @@ function isDamageModifier(value: unknown): value is number {
     return typeof value === "number" && Number.isSafeInteger(value) && value <= 20 && value >= -20;
 }
 
+function isInitiativeModifier(value: unknown): value is number {
+    return typeof value === "number" && Number.isSafeInteger(value) && value <= 20 && value >= -20;
+}
+
+function isAttacksPerTurn(value: unknown): value is number {
+    return typeof value === "number" && Number.isSafeInteger(value) && value <= 10 && value >= 1;
+}
+
 export async function POST(request: Request) {
     let runEncounter = encounter;
 
@@ -133,6 +141,32 @@ export async function POST(request: Request) {
             );
         }
 
+        const sideAInitiativeModifier = "sideAInitiativeModifier" in input ? input.sideAInitiativeModifier : undefined;
+        const sideBInitiativeModifier = "sideBInitiativeModifier" in input ? input.sideBInitiativeModifier : undefined;
+
+        // Requests can omit these fields and use the preset values.
+        if (
+            (sideAInitiativeModifier !== undefined && !isInitiativeModifier(sideAInitiativeModifier)) ||
+            (sideBInitiativeModifier !== undefined && !isInitiativeModifier(sideBInitiativeModifier))
+        ) {
+            return Response.json(
+                { error: "Initiative Modifier must be a whole number from -20 to 20."}, { status: 400 },
+            );
+        }
+
+        const sideAAttacksPerTurn = "sideAAttacksPerTurn" in input ? input.sideAAttacksPerTurn : undefined;
+        const sideBAttacksPerTurn = "sideBAttacksPerTurn" in input ? input.sideBAttacksPerTurn : undefined;
+
+        // Requests can omit these fields and use the preset values.
+        if (
+            (sideAAttacksPerTurn !== undefined && !isAttacksPerTurn(sideAAttacksPerTurn)) ||
+            (sideBAttacksPerTurn !== undefined && !isAttacksPerTurn(sideBAttacksPerTurn))
+        ) {
+            return Response.json(
+                { error: "Attacks Per Turn must be a whole number from 1 to 10."}, { status: 400 },
+            );
+        }
+
         // Copy the preset so each run has its own starting stats.
         runEncounter = {
             ...encounter,
@@ -143,6 +177,8 @@ export async function POST(request: Request) {
                 attackBonus: (combatant.side === "a" ? sideAAttackBonus : sideBAttackBonus) ?? combatant.attackBonus,
                 damageDice: (combatant.side === "a" ? sideADamageDice : sideBDamageDice)?.trim().toLowerCase() ?? combatant.damageDice,
                 damageModifier: (combatant.side === "a" ? sideADamageModifier : sideBDamageModifier) ?? combatant.damageModifier,
+                initiativeModifier: (combatant.side === "a" ? sideAInitiativeModifier : sideBInitiativeModifier) ?? combatant.initiativeModifier,
+                attacksPerTurn: (combatant.side === "a" ? sideAAttacksPerTurn : sideBAttacksPerTurn) ?? combatant.attacksPerTurn,
             })),
         };
     }

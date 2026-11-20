@@ -23,7 +23,11 @@ export default function SimulationDemo() {
     const [sideADamageDice, setSideADamageDice] = useState("1d6");
     const [sideBDamageDice, setSideBDamageDice] = useState("1d6");
     const [sideADamageModifier, setSideADamageModifier] = useState("2");
-    const [sideBDamageModifier, setSideBDamageModifier] = useState("2");
+    const [sideBDamageModifier, setSideBDamageModifier] = useState("1");
+    const [sideAInitiativeModifier, setSideAInitiativeModifier] = useState("1");
+    const [sideBInitiativeModifier, setSideBInitiativeModifier] = useState("1");
+    const [sideAAttacksPerTurn, setSideAAttacksPerTurn] = useState("1");
+    const [sideBAttacksPerTurn, setSideBAttacksPerTurn] = useState("1");
 
     async function requestRun(url: string, options: RequestInit) {
         setRunning(true);
@@ -63,6 +67,10 @@ export default function SimulationDemo() {
                 sideBDamageDice: sideBDamageDice.trim(),
                 sideADamageModifier: sideADamageModifier.trim() === "" ? null : Number(sideADamageModifier),
                 sideBDamageModifier: sideBDamageModifier.trim() === "" ? null : Number(sideBDamageModifier),
+                sideAInitiativeModifier: sideAInitiativeModifier.trim() === "" ? null : Number(sideAInitiativeModifier),
+                sideBInitiativeModifier: sideBInitiativeModifier.trim() === "" ? null : Number(sideBInitiativeModifier),
+                sideAAttacksPerTurn: sideAAttacksPerTurn.trim() === "" ? null : Number(sideAAttacksPerTurn),
+                sideBAttacksPerTurn: sideBAttacksPerTurn.trim() === "" ? null : Number(sideBAttacksPerTurn),
             }),
         });
     }
@@ -150,6 +158,38 @@ export default function SimulationDemo() {
                         type="number" min={-20} max={20} step={1}
                         value={sideBDamageModifier}
                         onChange={(event) => setSideBDamageModifier(event.currentTarget.value)}
+                        />
+                </label>
+                <label>
+                    Adventurer Initiative Modifier
+                    <input
+                        type="number" min={-20} max={20} step={1}
+                        value={sideAInitiativeModifier}
+                        onChange={(event) => setSideAInitiativeModifier(event.currentTarget.value)}
+                        />
+                </label>
+                <label>
+                    Adventurer Attacks Per Turn
+                    <input
+                        type="number" min={1} max={10} step={1}
+                        value={sideAAttacksPerTurn}
+                        onChange={(event) => setSideAAttacksPerTurn(event.currentTarget.value)}
+                        />
+                </label>
+                <label>
+                    Practice Opponent Initiative Modifier
+                    <input
+                        type="number" min={-20} max={20} step={1}
+                        value={sideBInitiativeModifier}
+                        onChange={(event) => setSideBInitiativeModifier(event.currentTarget.value)}
+                        />
+                </label>
+                <label>
+                    Practice Opponent Atacks Per Turn
+                    <input
+                        type="number" min={1} max={10} step={1}
+                        value={sideBAttacksPerTurn}
+                        onChange={(event) => setSideBAttacksPerTurn(event.currentTarget.value)}
                         />
                 </label>
             </fieldset>
