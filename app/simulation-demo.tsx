@@ -3,7 +3,13 @@
 import { useState } from "react";
 import type { simulateBatch } from "@/lib/combat/batch";
 
-type DemoRun = ReturnType<typeof simulateBatch> & {
+type BatchSummary = ReturnType<typeof simulateBatch>;
+
+type DemoRun = Omit<BatchSummary, "metricScope" | "knockoutPercent" | "averageRemainingHP"> & {
+    // Older saved summaries do not contain these fields.
+    metricScope?: BatchSummary["metricScope"];
+    knockoutPercent?: BatchSummary["knockoutPercent"];
+    averageRemainingHP?: BatchSummary["averageRemainingHP"];
     trialCount: number;
     roundLimit: number;
     runId: string;
@@ -237,6 +243,29 @@ export default function SimulationDemo() {
                             Average completed rounds:{" "}
                             {result.averageCompletedRounds?.toFixed(1) ?? "None"}
                         </li>
+                        <li>Knockout and HP metrics use completed battles only.</li>
+                        <li>
+                            Adventurer chance of at least one knockout:{" "}
+                            {result.knockoutPercent ? result.knockoutPercent.a.toFixed(1) : "Unavailable"}
+                        </li>
+                        <li>
+                            Practice Opponent chance of at least one knockout:{" "}
+                            {result.knockoutPercent ? result.knockoutPercent.b.toFixed(1) : "Unavailable"}
+                        </li>
+                        <li>
+                            Adventurer average remaining total HP:{" "}
+                            {result.averageRemainingHP?.a.toFixed(1) ?? "Unavailable"}
+                        </li>
+                        <li>
+                            Practice Opponent average remaining total HP:{" "}
+                            {result.averageRemainingHP?.b.toFixed(1) ?? "Unavailable"}
+                        </li>
+                        {(result.knockoutPercent == null || result.averageRemainingHP == null) && (
+                            <li>
+                                These metrics are unavailable for older saved runs or batches with no completed battles.
+                            </li>
+                        )}
+                        
                     </ul>
                 )}
             </div>

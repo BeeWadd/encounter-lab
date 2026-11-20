@@ -18,6 +18,9 @@ export function simulateBatch(
     const wins: Record<Side, number> = { a: 0, b: 0 };
     let unresolvedTrials = 0;
     let completedRoundTotal = 0;
+    
+    const knockoutTrials: Record<Side, number> = { a: 0, b: 0 };
+    const remainingHPTotals: Record<Side, number> = { a: 0, b: 0 };
 
     for (let trial = 0; trial < trialCount; trial++) {
         const result = simulateBattle(encounter, roundLimit, random);
@@ -25,6 +28,16 @@ export function simulateBatch(
         if (result.winner === null) {
             unresolvedTrials++;
             continue;
+        }
+
+        // Only completed battles contribute to these two metrics.
+        for (const side of ["a", "b"] as const) {
+            remainingHPTotals[side] += result.remainingHP[side];
+
+            // Count the trial once even if multiple teammates were knocked out.
+            if (result.knockouts[side] > 0) {
+                knockoutTrials[side]++;
+            }
         }
 
         wins[result.winner]++;
@@ -43,5 +56,14 @@ export function simulateBatch(
         },
         // With no completed battles, there is no duration to average.
         averageCompletedRounds: completedTrials === 0 ? null : completedRoundTotal / completedTrials,
+        metricScope: "completed_trials" as const,
+        knockoutPercent: completedTrials === 0 ? null : {
+            a: (knockoutTrials.a / completedTrials) * 100,
+            b: (knockoutTrials.b / completedTrials) * 100,
+        },
+        averageRemainingHP: completedTrials === 0 ? null : {
+            a: remainingHPTotals.a / completedTrials,
+            b: remainingHPTotals.b / completedTrials,
+        }
     };
 }

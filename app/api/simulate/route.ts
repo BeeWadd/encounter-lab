@@ -196,7 +196,7 @@ export async function POST(request: Request) {
             encounter_id: PRACTICE_ENCOUNTER_ID,
             seed,
             rules_version: "SRD 5.1",
-            engine_version: "0.1.0",
+            engine_version: "0.2.0",
             trial_count: trialCount,
             round_limit: roundLimit,
             input_snapshot: runEncounter,
