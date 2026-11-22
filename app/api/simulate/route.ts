@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { simulateBatch } from "@/lib/combat/batch";
-import type { CombatantInput, EncounterInput } from "@/lib/combat/types";
+import type { CombatantInput, EncounterInput, TargetingPolicy } from "@/lib/combat/types";
 import { createSupabaseClient } from "@/lib/supabase";
 import { rollDamage } from "@/lib/combat/damage";
 
@@ -73,6 +73,10 @@ function isInitiativeModifier(value: unknown): value is number {
 
 function isAttacksPerTurn(value: unknown): value is number {
     return typeof value === "number" && Number.isSafeInteger(value) && value <= 10 && value >= 1;
+}
+
+function isTargetingPolicy(value: unknown): value is TargetingPolicy {
+    return value === "random" || value === "lowest_hp";
 }
 
 export async function POST(request: Request) {
@@ -167,9 +171,24 @@ export async function POST(request: Request) {
             );
         }
 
+        const sideATargeting = "sideATargeting" in input ? input.sideATargeting : undefined;
+        const sideBTargeting = "sideBTargeting" in input ? input.sideBTargeting : undefined;
+
+        // Requests can omit these fields and use the preset values.
+        if (
+            (sideATargeting !== undefined && !isTargetingPolicy(sideATargeting)) ||
+            (sideBTargeting !== undefined && !isTargetingPolicy(sideBTargeting))
+        ) {
+            return Response.json(
+                { error: "Choose random or lowest-HP targeting for each side."}, { status: 400 },
+            );
+        }
+
         // Copy the preset so each run has its own starting stats.
         runEncounter = {
             ...encounter,
+            sideATargeting: sideATargeting ?? encounter.sideATargeting,
+            sideBTargeting: sideBTargeting ?? encounter.sideBTargeting,
             combatants: encounter.combatants.map((combatant) => ({
                 ...combatant,
                 startingHP: combatant.side === "a" ? sideAHp : sideBHp,

@@ -34,6 +34,8 @@ export default function SimulationDemo() {
     const [sideBInitiativeModifier, setSideBInitiativeModifier] = useState("1");
     const [sideAAttacksPerTurn, setSideAAttacksPerTurn] = useState("1");
     const [sideBAttacksPerTurn, setSideBAttacksPerTurn] = useState("1");
+    const [sideATargeting, setSideATargeting] = useState("random");
+    const [sideBTargeting, setSideBTargeting] = useState("random");
 
     async function requestRun(url: string, options: RequestInit) {
         setRunning(true);
@@ -77,6 +79,8 @@ export default function SimulationDemo() {
                 sideBInitiativeModifier: sideBInitiativeModifier.trim() === "" ? null : Number(sideBInitiativeModifier),
                 sideAAttacksPerTurn: sideAAttacksPerTurn.trim() === "" ? null : Number(sideAAttacksPerTurn),
                 sideBAttacksPerTurn: sideBAttacksPerTurn.trim() === "" ? null : Number(sideBAttacksPerTurn),
+                sideATargeting,
+                sideBTargeting,
             }),
         });
     }
@@ -198,6 +202,26 @@ export default function SimulationDemo() {
                         onChange={(event) => setSideBAttacksPerTurn(event.currentTarget.value)}
                         />
                 </label>
+                <label>
+                    Adventurer Side Targeting
+                    <select
+                        value={sideATargeting}
+                        onChange={(event) => setSideATargeting(event.currentTarget.value)}
+                    >
+                        <option value="random">Random living opponent</option>
+                        <option value="lowest_hp">Lowest current HP</option>
+                    </select>
+                </label>
+                <label>
+                    Practice Opponent Side Targeting
+                    <select
+                        value={sideBTargeting}
+                        onChange={(event) => setSideBTargeting(event.currentTarget.value)}
+                    >
+                        <option value="random">Random living opponent</option>
+                        <option value="lowest_hp">Lowest current HP</option>
+                    </select>
+                </label>
             </fieldset>
             <button
                 type="button"
@@ -246,11 +270,11 @@ export default function SimulationDemo() {
                         <li>Knockout and HP metrics use completed battles only.</li>
                         <li>
                             Adventurer chance of at least one knockout:{" "}
-                            {result.knockoutPercent ? result.knockoutPercent.a.toFixed(1) : "Unavailable"}
+                            {result.knockoutPercent ? result.knockoutPercent.a.toFixed(1) + "%" : "Unavailable"}
                         </li>
                         <li>
                             Practice Opponent chance of at least one knockout:{" "}
-                            {result.knockoutPercent ? result.knockoutPercent.b.toFixed(1) : "Unavailable"}
+                            {result.knockoutPercent ? result.knockoutPercent.b.toFixed(1) + "%" : "Unavailable"}
                         </li>
                         <li>
                             Adventurer average remaining total HP:{" "}
