@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import type { simulateBatch } from "@/lib/combat/batch";
+import CombatantEditor, {
+    type CombatantDraft, 
+    type EditableCombatantField,
+} from "./combatant-editor";
+import type { Side } from "@/lib/combat/types";
 
 type BatchSummary = ReturnType<typeof simulateBatch>;
 
@@ -15,25 +20,36 @@ type DemoRun = Omit<BatchSummary, "metricScope" | "knockoutPercent" | "averageRe
     runId: string;
 };
 
+const MAX_COMBATANTS = 12;
+
+function createCombatant(side: Side, id: string): CombatantDraft {
+    return {
+        id,
+        side,
+        name: side === "a" ? "Adventurer" : "Practice Opponent",
+        startingHP: side === "a" ? "12" : "10",
+        armorClass: side === "a" ? "13" : "12",
+        initiativeModifier: "1",
+        attackBonus: "3",
+        damageDice: "1d6",
+        damageModifier: side === "a" ? "2" : "1",
+        attacksPerTurn: "1",
+    };
+}
+
+function numberFromInput(value: string): number | null {
+    return value.trim() === "" ? null : Number(value);
+}
+
 export default function SimulationDemo() {
     const [result, setResult] = useState<DemoRun | null>(null);
     const [running, setRunning] = useState(false);
     const [error, setError] = useState("");
     const [runIdToLoad, setRunIdToLoad] = useState("");
-    const [sideAHp, setSideAHp] = useState("12");
-    const [sideBHp, setSideBHp] = useState("10");
-    const [sideAArmorClass, setSideAArmorClass] = useState("13");
-    const [sideBArmorClass, setSideBArmorClass] = useState("12");
-    const [sideAAttackBonus, setSideAAttackBonus] = useState("3");
-    const [sideBAttackBonus, setSideBAttackBonus] = useState("3");
-    const [sideADamageDice, setSideADamageDice] = useState("1d6");
-    const [sideBDamageDice, setSideBDamageDice] = useState("1d6");
-    const [sideADamageModifier, setSideADamageModifier] = useState("2");
-    const [sideBDamageModifier, setSideBDamageModifier] = useState("1");
-    const [sideAInitiativeModifier, setSideAInitiativeModifier] = useState("1");
-    const [sideBInitiativeModifier, setSideBInitiativeModifier] = useState("1");
-    const [sideAAttacksPerTurn, setSideAAttacksPerTurn] = useState("1");
-    const [sideBAttacksPerTurn, setSideBAttacksPerTurn] = useState("1");
+    const [combatants, setCombatants] = useState<CombatantDraft[]>(() => [
+        createCombatant("a", "demo-a"),
+        createCombatant("b", "demo-b"),
+    ]);
     const [sideATargeting, setSideATargeting] = useState("random");
     const [sideBTargeting, setSideBTargeting] = useState("random");
 
@@ -59,26 +75,55 @@ export default function SimulationDemo() {
             setRunning(false);
         }
     }
+
+    function updateCombatant(id: string, field: EditableCombatantField, value: string) {
+        setCombatants((current) => current.map((combatant) =>
+            combatant.id === id ? { ...combatant, [field]: value } : combatant
+        ));
+    }
+
+    function addCombatant(side: Side) {
+        // Generate IDs only in response to a user action.
+        const added = createCombatant(side, crypto.randomUUID());
+        setCombatants((current) =>
+            current.length >= MAX_COMBATANTS ? current : [...current, added]
+        );
+        setResult(null);
+    }
+
+    function removeCombatant(id: string) {
+        setCombatants((current) => {
+            const remaining = current.filter((combatant) => combatant.id !== id);
+            
+            // Preserve at least one participant per side, even for batched updates.
+            if (
+                !remaining.some((combatant) => combatant.side === "a") ||
+                !remaining.some((combatant) => combatant.side === "b")
+            ) {
+                return current;
+            }
+            
+            return remaining;
+        });
+        setResult(null);
+    }
     
     function runSimulation() {
         return requestRun("/api/simulate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ 
-                sideAHp: Number(sideAHp), 
-                sideBHp: Number(sideBHp),
-                sideAArmorClass: Number(sideAArmorClass),
-                sideBArmorClass: Number(sideBArmorClass), 
-                sideAAttackBonus: sideAAttackBonus.trim() === "" ? null : Number(sideAAttackBonus),
-                sideBAttackBonus: sideBAttackBonus.trim() === "" ? null : Number(sideBAttackBonus),
-                sideADamageDice: sideADamageDice.trim(),
-                sideBDamageDice: sideBDamageDice.trim(),
-                sideADamageModifier: sideADamageModifier.trim() === "" ? null : Number(sideADamageModifier),
-                sideBDamageModifier: sideBDamageModifier.trim() === "" ? null : Number(sideBDamageModifier),
-                sideAInitiativeModifier: sideAInitiativeModifier.trim() === "" ? null : Number(sideAInitiativeModifier),
-                sideBInitiativeModifier: sideBInitiativeModifier.trim() === "" ? null : Number(sideBInitiativeModifier),
-                sideAAttacksPerTurn: sideAAttacksPerTurn.trim() === "" ? null : Number(sideAAttacksPerTurn),
-                sideBAttacksPerTurn: sideBAttacksPerTurn.trim() === "" ? null : Number(sideBAttacksPerTurn),
+                combatants: combatants.map((combatant) => ({
+                    ...combatant,
+                    name: combatant.name.trim(),
+                    damageDice: combatant.damageDice.trim(),
+                    startingHP: numberFromInput(combatant.startingHP),
+                    armorClass: numberFromInput(combatant.armorClass),
+                    initiativeModifier: numberFromInput(combatant.initiativeModifier),
+                    attackBonus: numberFromInput(combatant.attackBonus),
+                    damageModifier: numberFromInput(combatant.damageModifier),
+                    attacksPerTurn: numberFromInput(combatant.attacksPerTurn),
+                })),
                 sideATargeting,
                 sideBTargeting,
             }),
@@ -87,123 +132,41 @@ export default function SimulationDemo() {
 
     return (
         <section className="mt-10">
-            <h2 className="mb-3 text-2x1 font-semibold">Practice simulation</h2>
-            <p className="mb-3">Adventurer vs. Practice Opponent</p>
-            <fieldset disabled={running}>
+            <h2 className="mb-3 text-2x1 font-semibold">Encounter simulation</h2>
+            <p className="mb-3">
+                {combatants.length} of {MAX_COMBATANTS} combatants. At least one per side.
+            </p>
+            <fieldset disabled={running} onChange={() => setResult(null)}>
+                {(["a", "b"] as const).map((side) => {
+                    const members = combatants.filter((combatant) => combatant.side === side);
+
+                    return (
+                        <section key={side} className="mb-6">
+                            <h3 className="mb-3 text-x1 font-semibold">
+                                Side {side.toUpperCase()}
+                            </h3>
+                            {members.map((combatant) => (
+                                <CombatantEditor
+                                    key={combatant.id}
+                                    combatant={combatant}
+                                    onChange={(field, value) => updateCombatant(combatant.id, field, value)}
+                                    onRemove={() => removeCombatant(combatant.id)}
+                                    canRemove={members.length > 1}
+                                />
+                            ))}
+                            <button
+                                type="button"
+                                className="rounded border px-3 py-1 disabled:opacity-60"
+                                disabled={combatants.length >= MAX_COMBATANTS}
+                                onClick={() => addCombatant(side)}
+                            >
+                                Add Combatant
+                            </button>
+                        </section>
+                    );
+                })}
                 <label>
-                    Adventurer Starting HP
-                    <input
-                        type="number" min={1} max={999} step={1}
-                        value={sideAHp}
-                        onChange={(event) => setSideAHp(event.currentTarget.value)}
-                    />
-                </label>
-                <label>
-                    Practice Opponent Starting HP
-                    <input
-                        type="number" min={1} max={999} step={1}
-                        value={sideBHp}
-                        onChange={(event) => setSideBHp(event.currentTarget.value)}
-                    />
-                </label>
-                <label>
-                    Adventurer Armor Class
-                    <input
-                        type="number" min={1} step={1}
-                        value={sideAArmorClass}
-                        onChange={(event) => setSideAArmorClass(event.currentTarget.value)}
-                        />
-                </label>
-                <label>
-                    Practice Opponent Armor Class
-                    <input
-                        type="number" min={1} step={1}
-                        value={sideBArmorClass}
-                        onChange={(event) => setSideBArmorClass(event.currentTarget.value)}
-                        />
-                </label>
-                <label>
-                    Adventurer Attack Bonus
-                    <input
-                        type="number" min={-20} max={20} step={1}
-                        value={sideAAttackBonus}
-                        onChange={(event) => setSideAAttackBonus(event.currentTarget.value)}
-                        />
-                </label>
-                <label>
-                    Practice Opponent Attack Bonus
-                    <input
-                        type="number" min={-20} max={20} step={1}
-                        value={sideBAttackBonus}
-                        onChange={(event) => setSideBAttackBonus(event.currentTarget.value)}
-                        />
-                </label>
-                <label>
-                    Adventurer Damage Dice
-                    <input
-                        type="text"
-                        value={sideADamageDice}
-                        onChange={(event) => setSideADamageDice(event.currentTarget.value)}
-                        />
-                </label>
-                <label>
-                    Adventurer Damage Modifier
-                    <input
-                        type="number" min={-20} max={20} step={1}
-                        value={sideADamageModifier}
-                        onChange={(event) => setSideADamageModifier(event.currentTarget.value)}
-                        />
-                </label>
-                <label>
-                    Practice Opponent Damage Dice
-                    <input
-                        type="text"
-                        value={sideBDamageDice}
-                        onChange={(event) => setSideBDamageDice(event.currentTarget.value)}
-                        />
-                </label>
-                <label>
-                    Practice Opponent Damage Modifier
-                    <input
-                        type="number" min={-20} max={20} step={1}
-                        value={sideBDamageModifier}
-                        onChange={(event) => setSideBDamageModifier(event.currentTarget.value)}
-                        />
-                </label>
-                <label>
-                    Adventurer Initiative Modifier
-                    <input
-                        type="number" min={-20} max={20} step={1}
-                        value={sideAInitiativeModifier}
-                        onChange={(event) => setSideAInitiativeModifier(event.currentTarget.value)}
-                        />
-                </label>
-                <label>
-                    Adventurer Attacks Per Turn
-                    <input
-                        type="number" min={1} max={10} step={1}
-                        value={sideAAttacksPerTurn}
-                        onChange={(event) => setSideAAttacksPerTurn(event.currentTarget.value)}
-                        />
-                </label>
-                <label>
-                    Practice Opponent Initiative Modifier
-                    <input
-                        type="number" min={-20} max={20} step={1}
-                        value={sideBInitiativeModifier}
-                        onChange={(event) => setSideBInitiativeModifier(event.currentTarget.value)}
-                        />
-                </label>
-                <label>
-                    Practice Opponent Atacks Per Turn
-                    <input
-                        type="number" min={1} max={10} step={1}
-                        value={sideBAttacksPerTurn}
-                        onChange={(event) => setSideBAttacksPerTurn(event.currentTarget.value)}
-                        />
-                </label>
-                <label>
-                    Adventurer Side Targeting
+                    Side A Targeting
                     <select
                         value={sideATargeting}
                         onChange={(event) => setSideATargeting(event.currentTarget.value)}
@@ -213,7 +176,7 @@ export default function SimulationDemo() {
                     </select>
                 </label>
                 <label>
-                    Practice Opponent Side Targeting
+                    Side B Targeting
                     <select
                         value={sideBTargeting}
                         onChange={(event) => setSideBTargeting(event.currentTarget.value)}
@@ -260,8 +223,8 @@ export default function SimulationDemo() {
                     <ul>
                         <li>Saved run ID: {result.runId}</li>
                         <li>Trials: {result.trialCount}</li>
-                        <li>Adventurer wins: {result.winPercent.a.toFixed(1)}%</li>
-                        <li>Practice Opponent wins: {result.winPercent.b.toFixed(1)}%</li>
+                        <li>Side A wins: {result.winPercent.a.toFixed(1)}%</li>
+                        <li>Side B wins: {result.winPercent.b.toFixed(1)}%</li>
                         <li>Unresolved: {result.unresolvedTrials}</li>
                         <li>
                             Average completed rounds:{" "}
@@ -269,19 +232,19 @@ export default function SimulationDemo() {
                         </li>
                         <li>Knockout and HP metrics use completed battles only.</li>
                         <li>
-                            Adventurer chance of at least one knockout:{" "}
+                            Side A chance of at least one knockout:{" "}
                             {result.knockoutPercent ? result.knockoutPercent.a.toFixed(1) + "%" : "Unavailable"}
                         </li>
                         <li>
-                            Practice Opponent chance of at least one knockout:{" "}
+                            Side B chance of at least one knockout:{" "}
                             {result.knockoutPercent ? result.knockoutPercent.b.toFixed(1) + "%" : "Unavailable"}
                         </li>
                         <li>
-                            Adventurer average remaining total HP:{" "}
+                            Side A average remaining total HP:{" "}
                             {result.averageRemainingHP?.a.toFixed(1) ?? "Unavailable"}
                         </li>
                         <li>
-                            Practice Opponent average remaining total HP:{" "}
+                            Side B average remaining total HP:{" "}
                             {result.averageRemainingHP?.b.toFixed(1) ?? "Unavailable"}
                         </li>
                         {(result.knockoutPercent == null || result.averageRemainingHP == null) && (
