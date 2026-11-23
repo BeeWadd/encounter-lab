@@ -123,7 +123,7 @@ function parseEncounterInput(input: object): EncounterInput {
 
     const combatants = input.combatants.map((value, index): CombatantInput => {
         if (!isCombatantInput(value)) {
-            throw new Error('Combatant ${index + 1} has an invalid ID, name, side or combat stat.');
+            throw new Error("Combatant " + (index + 1) + " has an invalid ID, name, side or combat stat.");
         }
 
         // Build a clean snapshot containing the fields the engine uses.
