@@ -338,7 +338,7 @@ export async function GET(request: Request) {
     // Only load runs that belong to the practice encounter.
     const { data: savedRun, error } = await createSupabaseClient()
         .from("simulation_runs")
-        .select("id, trial_count, round_limit, result_summary")
+        .select("id, trial_count, round_limit, input_snapshot, result_summary")
         .eq("encounter_id", PRACTICE_ENCOUNTER_ID)
         .eq("id", runId)
         .maybeSingle();
@@ -352,9 +352,26 @@ export async function GET(request: Request) {
         return Response.json({ error: "Saved run not found." }, { status: 404 });
     }
 
+    let inputSnapshot: EncounterInput;
+
+    try {
+        // Reuse input validation before rebuilding an editable encounter.
+        inputSnapshot = parseEncounterInput(savedRun.input_snapshot);
+    } catch (error) {
+        console.error(
+            "Could not restore saved inputs:",
+            error instanceof Error ? error.message : error,
+        );
+        return Response.json(
+            { error: "Could not restore this run's saved encounter inputs." },
+            { status: 500 },
+        );
+    }
+
     // Return the same shape as POST so the homepage can reuse its results list.
     return Response.json({
         ...savedRun.result_summary,
+        inputSnapshot,
         runId: savedRun.id,
         trialCount: savedRun.trial_count,
         roundLimit: savedRun.round_limit,

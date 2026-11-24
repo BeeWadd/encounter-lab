@@ -6,7 +6,7 @@ import CombatantEditor, {
     type CombatantDraft, 
     type EditableCombatantField,
 } from "./combatant-editor";
-import type { Side } from "@/lib/combat/types";
+import type { CombatantInput, EncounterInput, Side } from "@/lib/combat/types";
 
 type BatchSummary = ReturnType<typeof simulateBatch>;
 
@@ -18,6 +18,7 @@ type DemoRun = Omit<BatchSummary, "metricScope" | "knockoutPercent" | "averageRe
     trialCount: number;
     roundLimit: number;
     runId: string;
+    inputSnapshot?: EncounterInput;
 };
 
 const MAX_COMBATANTS = 12;
@@ -39,6 +40,19 @@ function createCombatant(side: Side, id: string): CombatantDraft {
 
 function numberFromInput(value: string): number | null {
     return value.trim() === "" ? null : Number(value);
+}
+
+function toCombatantDraft(combatant: CombatantInput): CombatantDraft {
+    // Create an editable copy with text values for the numeric input fields.
+    return {
+        ...combatant,
+        startingHP: String(combatant.startingHP),
+        armorClass: String(combatant.armorClass),
+        initiativeModifier: String(combatant.initiativeModifier),
+        attackBonus: String(combatant.attackBonus),
+        damageModifier: String(combatant.damageModifier),
+        attacksPerTurn: String(combatant.attacksPerTurn),
+    };
 }
 
 export default function SimulationDemo() {
@@ -68,6 +82,14 @@ export default function SimulationDemo() {
             }
 
             const summary: DemoRun = await response.json();
+            
+            if (summary.inputSnapshot) {
+                const restoredCombatants = summary.inputSnapshot.combatants.map(toCombatantDraft);
+                setCombatants(restoredCombatants);
+                setSideATargeting(summary.inputSnapshot.sideATargeting);
+                setSideBTargeting(summary.inputSnapshot.sideBTargeting);
+            }
+
             setResult(summary);
         } catch {
             setError("Could not reach the server. Please try again.");
