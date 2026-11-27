@@ -77,6 +77,8 @@ export default function SimulationDemo() {
     const [historyLoading, setHistoryLoading] = useState(true);
     const [historyError, setHistoryError] = useState("");
     const [historyVersion, setHistoryVersion] = useState(0);
+    const [baselineRun, setBaselineRun] = useState<DemoRun | null>(null);
+    const [comparisonRun, setComparisonRun] = useState<DemoRun | null>(null);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -147,14 +149,53 @@ export default function SimulationDemo() {
             }
 
             setResult(summary);
+
+            // Keep the baseline until the user explicitly chooses another run.
+            setBaselineRun((current) => current ?? summary);
+            setComparisonRun(summary);
+
+            if (options.method === "POST") {
+                refreshHistory();
+            }
         } catch {
             setError("Could not reach the server. Please try again.");
         } finally {
             setRunning(false);
         }
+    }
 
-        if (options.method === "POST") {
-            refreshHistory();
+    async function loadComparisonRun(
+        runId: string,
+        slot: "baseline" | "comparison",
+    ) {
+        if (!runId) return;
+
+        setRunning(true);
+        setError("");
+
+        try {
+            const query = new URLSearchParams({ runId });
+            const response = await fetch("/api/simulate?" + query, {
+                cache: "no-store",
+            });
+
+            if (!response.ok) {
+                const problem = await response.json();
+                throw new Error(problem.error ?? "Could not load this saved run.");
+            }
+
+            const savedRun: DemoRun = await response.json();
+
+            // Comparison choices do not restore inputs into the editor.
+            if (slot === "baseline") {
+                setBaselineRun(savedRun);
+            } else {
+                setComparisonRun(savedRun);
+            }
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "Could not load this saved run.");
+        } finally {
+            setRunning(false);
         }
     }
 
@@ -332,6 +373,53 @@ export default function SimulationDemo() {
                     Load Saved Run
                 </button>
             </div>
+
+            <section className="mt-6 rounded border p-4">
+                <h3 className="mb-3 font-semibold">Compare saved runs</h3>
+                <p className="mb-3">
+                    New simulations update the comparison. Your baseline stays pinned until you choose another run. Selections reset on page reload.
+                </p>
+
+                {(["baseline", "comparison"] as const).map((slot) => {
+                    const selectedRun = slot === "baseline" ? baselineRun : comparisonRun;
+
+                    return (
+                        <div key={slot} className="mb-3">
+                            <label>
+                                {slot === "baseline" ? "Baseline run" : "Comparison run"}
+                                <select
+                                    className="ml-2 border px-2 py-1"
+                                    value={selectedRun?.runId ?? ""}
+                                    disabled={running || historyLoading}
+                                    onChange={(event) => void loadComparisonRun(
+                                        event.currentTarget.value,
+                                        slot,
+                                    )
+                                }
+                            >
+                                <option value="" disabled>Choose a saved run</option>
+
+                                {selectedRun && !savedRuns.some((run) => run.id === selectedRun.runId
+                                    ) && (
+                                        <option value={selectedRun.runId}>
+                                            {"Loaded run - " + selectedRun.runId}
+                                        </option>
+                                    )}
+                                
+                                {savedRuns.map((run) => (
+                                    <option key={run.id} value={run.id}>
+                                        {new Date(run.createdAt).toLocaleString() + " - " + run.trialCount + " trials - " + run.id.slice(0, 8)}
+                                    </option>
+                                ))}
+                            </select>
+                            </label>
+                            <p className="text-sm">
+                                {selectedRun ? "Selected run ID: " + selectedRun.runId : "No run selected yet."}
+                            </p>
+                        </div>
+                    );
+                })}
+            </section>
 
             <div className="mt-3" aria-live="polite">
                 {error && <p>{error}</p>}
