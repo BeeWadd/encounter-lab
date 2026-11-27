@@ -62,6 +62,45 @@ function toCombatantDraft(combatant: CombatantInput): CombatantDraft {
     };
 }
 
+type ComparisonMetric = {
+    label: string;
+    value: (run: DemoRun) => number | null | undefined;
+    unit: "%" | " rounds" | " HP";
+};
+
+const COMPARISON_METRICS: ComparisonMetric[] = [
+    { label: "Side A win chance", value: (run) => run.winPercent.a, unit: "%" },
+    { label: "Side B win chance", value: (run) => run.winPercent.b, unit: "%" },
+    { label: "Average completed rounds", value: (run) => run.averageCompletedRounds, unit: " rounds" },
+    { label: "Side A suffers at least one knockout", value: (run) => run.knockoutPercent?.a, unit: "%" },
+    { label: "Side B suffers at least one knockout", value: (run) => run.knockoutPercent?.b, unit: "%" },
+    { label: "Side A average remaining total HP", value: (run) => run.averageRemainingHP?.a, unit: " HP" },
+    { label: "Side B average remaining total HP", value: (run) => run.averageRemainingHP?.a, unit: " HP" },
+];
+
+function formatMetric(
+    value: number | null | undefined,
+    unit: ComparisonMetric["unit"],
+): string {
+    return value == null ? "Unavailable" : value.toFixed(1) + unit;
+}
+
+function formatDifference(
+    baseline: number | null | undefined,
+    comparison: number | null | undefined,
+    unit: ComparisonMetric["unit"],
+): string {
+    // Missing values must not be treated as zero
+    if (baseline == null || comparison == null) return "Unavailable";
+
+    // Round before choosing the sign to avoid displaying negative zero.
+    const difference = Number((comparison - baseline).toFixed(1));
+    const sign = difference > 0 ? "+" : "";
+    const differenceUnit = unit === "%" ? "pp" : unit;
+
+    return sign + difference.toFixed(1) + differenceUnit;
+}
+
 export default function SimulationDemo() {
     const [result, setResult] = useState<DemoRun | null>(null);
     const [running, setRunning] = useState(false);
@@ -419,6 +458,87 @@ export default function SimulationDemo() {
                         </div>
                     );
                 })}
+
+                {baselineRun && comparisonRun ? (
+                    <div className="mt-4">
+                        <p>
+                            Baseline: {baselineRun.trialCount} trials,
+                            {" "}{baselineRun.roundLimit}-round cap,
+                            {" "}{baselineRun.unresolvedTrials} unresolved.
+                        </p>
+                        <p>
+                            Comparison: {comparisonRun.trialCount} trials,
+                            {" "}{comparisonRun.roundLimit}-round cap,
+                            {" "}{comparisonRun.unresolvedTrials} unresolved.
+                        </p>
+
+                        {(baselineRun.trialCount !== comparisonRun.trialCount ||
+                            baselineRun.roundLimit !== comparisonRun.roundLimit) && (
+                                <p className="mt-2">
+                                    These runs used different trial counts or round caps.
+                                    Consider those settings when interpreting differences.
+                                </p>
+                        )}
+
+                        {baselineRun.runId === comparisonRun.runId && (
+                            <p className="mt-2">
+                                Both selections refer to the same saved run.
+                            </p>
+                        )}
+
+                        <div className="mt-3 overflow-x-auto">
+                            <table className="w-full border-collapse text-left">
+                                <caption className="mb-2 text-left">
+                                    Outcome comparison: change = comparison minus baseline.
+                                </caption>
+                                <thead>
+                                    <tr className="border-b">
+                                        <th scope="col" className="p-2">Measure</th>
+                                        <th scope="col" className="p-2">Baseline</th>
+                                        <th scope="col" className="p-2">Comparison</th>
+                                        <th scope="col" className="p-2">Change</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {COMPARISON_METRICS.map(metric => {
+                                        const baselineValue = metric.value(baselineRun);
+                                        const comparisonValue = metric.value(comparisonRun);
+
+                                        return (
+                                            <tr key={metric.label} className="border-b">
+                                                <th scope="row" className="p-2 font-normal">
+                                                    {metric.label}
+                                                </th>
+                                                <td className="p-2">
+                                                    {formatMetric(baselineValue, metric.unit)}
+                                                </td>
+                                                <td className="p-2">
+                                                    {formatMetric(comparisonValue, metric.unit)}
+                                                </td>
+                                                <td className="p-2">
+                                                    {formatDifference(baselineValue, comparisonValue, metric.unit,)}
+                                                </td>
+                                            </tr>
+                                    );
+                                })}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <p className="mt-3 text-sm">
+                            Win chances use al; trials. Average rounds, knockout chances and remaining HP use completed battles only.
+                            Unavailable means the metric was not saved or no battles completed.
+                        </p>
+                        <p className="text-sm">
+                            pp means percentage points. Positive changes mean a higher value, which is not always a better outcome.
+                            Differences are estimates from simulated trials.
+                        </p>
+                    </div>
+                ) : (
+                    <p className="mt-3">
+                        Select both runs to compare their results.
+                    </p>
+                )}
             </section>
 
             <div className="mt-3" aria-live="polite">
