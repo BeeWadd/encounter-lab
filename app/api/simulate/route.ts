@@ -330,6 +330,31 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
     const runId = new URL(request.url).searchParams.get("runId");
 
+    // If no runID provided, lists the most recent 50 runs,
+    // otherwise, continues with existing restoration handler.
+    if (runId === null) {
+        const { data: runs, error } = await createSupabaseClient()
+            .from("simulation_runs")
+            .select("id, created_at, trial_count")
+            .eq("encounter_id", PRACTICE_ENCOUNTER_ID)
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
+            .limit(50);
+        
+            if (error) {
+                console.error("Could not list saved runs:", error.message);
+                return Response.json({ error: "Could not load saved runs." }, { status: 500 });
+            }
+
+            return Response.json({
+                runs: (runs ?? []).map((run) => ({
+                    id: run.id,
+                    createdAt: run.created_at,
+                    trialCount: run.trial_count,
+                })),
+            });
+    }
+
     // Check that the ID looks like a UUID before querying Supabase.
     if (!runId || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(runId)) {
         return Response.json({ error: "Enter a valid run ID." }, { status: 400 });

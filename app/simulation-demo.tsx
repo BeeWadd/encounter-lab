@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { simulateBatch } from "@/lib/combat/batch";
 import CombatantEditor, {
     type CombatantDraft, 
     type EditableCombatantField,
 } from "./combatant-editor";
 import type { CombatantInput, EncounterInput, Side } from "@/lib/combat/types";
+
 
 type BatchSummary = ReturnType<typeof simulateBatch>;
 
@@ -19,6 +20,12 @@ type DemoRun = Omit<BatchSummary, "metricScope" | "knockoutPercent" | "averageRe
     roundLimit: number;
     runId: string;
     inputSnapshot?: EncounterInput;
+};
+
+type SavedRunOption = {
+    id: string;
+    createdAt: string;
+    trialCount: number;
 };
 
 const MAX_COMBATANTS = 12;
@@ -66,6 +73,55 @@ export default function SimulationDemo() {
     ]);
     const [sideATargeting, setSideATargeting] = useState("random");
     const [sideBTargeting, setSideBTargeting] = useState("random");
+    const [savedRuns, setSavedRuns] = useState<SavedRunOption[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(true);
+    const [historyError, setHistoryError] = useState("");
+    const [historyVersion, setHistoryVersion] = useState(0);
+
+    useEffect(() => {
+        const controller = new AbortController();
+
+        async function loadHistory() {
+            try {
+                const response = await fetch("/api/simulate", {
+                    signal: controller.signal,
+                    cache: "no-store"
+                });
+
+                if (!response.ok) {
+                    throw new Error("History request failed.");
+                }
+
+                const history: { runs: SavedRunOption[] } = await response.json();
+                if (!Array.isArray(history.runs)) {
+                    throw new Error("Invalid history response.");
+                }
+
+                if (!controller.signal.aborted) {
+                    setSavedRuns(history.runs);
+                }
+            } catch {
+                if (!controller.signal.aborted) {
+                    setHistoryError("Could not load saved runs. Try Refresh runs.");
+                }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setHistoryLoading(false);
+                }
+            }
+        }
+
+        void loadHistory();
+
+        // An older request must not overwrite a refereshed list.
+        return () => controller.abort();
+    }, [historyVersion]);
+
+    function refreshHistory() {
+        setHistoryLoading(true);
+        setHistoryError("");
+        setHistoryVersion((current) => current + 1);
+    }
 
     async function requestRun(url: string, options: RequestInit) {
         setRunning(true);
@@ -95,6 +151,10 @@ export default function SimulationDemo() {
             setError("Could not reach the server. Please try again.");
         } finally {
             setRunning(false);
+        }
+
+        if (options.method === "POST") {
+            refreshHistory();
         }
     }
 
@@ -218,9 +278,43 @@ export default function SimulationDemo() {
             </button>
 
             <div className="mt-4">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <label htmlFor="saved-run-select">Recent saved runs (latest 50)</label>
+                    <select
+                        id="saved-run-select"
+                        className="border px-2 py-1"
+                        value={runIdToLoad}
+                        disabled={running || historyLoading}
+                        onChange={(event) => setRunIdToLoad(event.currentTarget.value)}
+                    >
+                        <option value="">Choose a saved run</option>
+                        {runIdToLoad && !savedRuns.some((run) => run.id === runIdToLoad) && (
+                            <option value={runIdToLoad}>Entered run ID</option>
+                        )}
+                        {savedRuns.map((run) => (
+                            <option key={run.id} value={run.id}>
+                                {new Date(run.createdAt).toLocaleString() + " - " + run.trialCount + " trials - " + run.id.slice(0, 8)}
+                            </option>
+                        ))}
+                    </select>
+                    <button
+                        type="button"
+                        className="rounded border px-3 py-1 disabled:opacity-60"
+                        disabled={running || historyLoading}
+                        onClick={refreshHistory}
+                    >
+                        Refresh runs
+                    </button>
+                </div>
+                {historyLoading && <p role="status">Loading saved runs...</p>}
+                {historyError && <p role="alert">{historyError}</p>}
+                {!historyLoading && !historyError && savedRuns.length === 0 && (
+                    <p role="status">No saved runs yet.</p>
+                )}
                 <label htmlFor="saved-run-id">Saved run ID</label>
                 <input
                     id="saved-run-id"
+                    disabled={running}
                     className="mx-2 border px-2 py-1"
                     value={runIdToLoad}
                     onChange={(event) => setRunIdToLoad(event.target.value)}
