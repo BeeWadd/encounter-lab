@@ -75,7 +75,7 @@ const COMPARISON_METRICS: ComparisonMetric[] = [
     { label: "Side A suffers at least one knockout", value: (run) => run.knockoutPercent?.a, unit: "%" },
     { label: "Side B suffers at least one knockout", value: (run) => run.knockoutPercent?.b, unit: "%" },
     { label: "Side A average remaining total HP", value: (run) => run.averageRemainingHP?.a, unit: " HP" },
-    { label: "Side B average remaining total HP", value: (run) => run.averageRemainingHP?.a, unit: " HP" },
+    { label: "Side B average remaining total HP", value: (run) => run.averageRemainingHP?.b, unit: " HP" },
 ];
 
 function formatMetric(
@@ -96,7 +96,7 @@ function formatDifference(
     // Round before choosing the sign to avoid displaying negative zero.
     const difference = Number((comparison - baseline).toFixed(1));
     const sign = difference > 0 ? "+" : "";
-    const differenceUnit = unit === "%" ? "pp" : unit;
+    const differenceUnit = unit === "%" ? " pp" : unit;
 
     return sign + difference.toFixed(1) + differenceUnit;
 }
@@ -526,7 +526,7 @@ export default function SimulationDemo() {
                         </div>
 
                         <p className="mt-3 text-sm">
-                            Win chances use al; trials. Average rounds, knockout chances and remaining HP use completed battles only.
+                            Win chances use all trials. Average rounds, knockout chances and remaining HP use completed battles only.
                             Unavailable means the metric was not saved or no battles completed.
                         </p>
                         <p className="text-sm">
