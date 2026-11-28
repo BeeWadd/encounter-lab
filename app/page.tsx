@@ -1,57 +1,63 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { createSupabaseClient } from "@/lib/supabase";
+import type { CombatantPreset } from "@/lib/combat/presets";
 import SimulationDemo from "./simulation-demo";
+import { profile } from "console";
 
-async function ProfileList() {
+async function EncounterWorkspace() {
   await connection();
 
-  const supabase = createSupabaseClient();
-
-  const { data: profiles, error } = await supabase
+  const { data: profiles, error } = await createSupabaseClient()
     .from("profiles")
-    .select("id, name, starting_hp, armor_class")
+    .select("id, name, starting_hp, armor_class, initiative_modifier, attack_bonus, damage_dice, damage_modifier, attacks_per_turn")
     .order("name");
 
   if (error) {
-    console.error("Could not load profiles:", error.message);
-    return <p>Could not load profiles. Check the server terminal.</p>;
+    console.error("Could not load presets:", error.message);
   }
 
-  if (!profiles || profiles.length === 0) {
-    return <p>No profiles have been added yet.</p>;
-  }
+  // Send public stats to the editor. Database access stays on server side.
+  const presets: CombatantPreset[] = error ? [] : (profiles ?? []).map((profile) => ({
+    profileId: profile.id,
+    stats: {
+      name: profile.name,
+      startingHP: profile.starting_hp,
+      armorClass: profile.armor_class,
+      initiativeModifier: profile.initiative_modifier,
+      attackBonus: profile.attack_bonus,
+      damageDice: profile.damage_dice,
+      damageModifier: profile.damage_modifier,
+      attacksPerTurn: profile.attacks_per_turn,
+    },
+  }));
 
   return (
-    <ul>
-      {profiles.map((profile) => (
-        <li key={profile.id}>
-          {profile.name} - HP {profile.starting_hp}, AC {profile.armor_class}
-        </li>
-      ))}
-    </ul>
+    <>
+      {error && (
+        <p role="alert">
+          Could not load presets. Combatants can still be edited manually.
+        </p>
+      )}
+      {!error && presets.length === 0 && (
+        <p>No presets are available yet.</p>
+      )}
+      <SimulationDemo presets={presets} />
+    </>
   );
 }
 
 export default function Home() {
   return (
-    <main className="mx-auto w-full max-w-3x1 px-6 py-12">
-      <h1 className="mb-4 text-4xl font-bold">
-        Encounter Lab
-      </h1>
-      
+    <main className="mx-auto w-full max-w-3xl px-6 py-12">
+      <h1 className="mb-4 text-4xl font-bold">Encounter Lab</h1>
       <p className="text-lg leading-relaxed">
         A tool for Dungeon Masters to compare how changes to an encounter affect its difficulty and duration.
       </p>
 
-      <h2 className="mb-3 mt-10 text-2xl font-semibold">
-        Available profiles
-      </h2>
-      
-      <Suspense fallback={<p>Loading profiles...</p>}>
-        <ProfileList />
+      <Suspense fallback={<p>Loading encounter editor...</p>}>
+        <EncounterWorkspace />
       </Suspense>
-      <SimulationDemo />
     </main>
   );
 }

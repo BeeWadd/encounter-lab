@@ -8,6 +8,7 @@ import CombatantEditor, {
 } from "./combatant-editor";
 import type { CombatantInput, EncounterInput, Side } from "@/lib/combat/types";
 import EncounterInputComparison from "./encounter-input-comparison";
+import type { CombatantPreset } from "@/lib/combat/presets";
 
 
 type BatchSummary = ReturnType<typeof simulateBatch>;
@@ -102,7 +103,11 @@ function formatDifference(
     return sign + difference.toFixed(1) + differenceUnit;
 }
 
-export default function SimulationDemo() {
+export default function SimulationDemo({
+    presets,
+}: {
+    presets: CombatantPreset[];
+}) {
     const [result, setResult] = useState<DemoRun | null>(null);
     const [running, setRunning] = useState(false);
     const [error, setError] = useState("");
@@ -119,6 +124,7 @@ export default function SimulationDemo() {
     const [historyVersion, setHistoryVersion] = useState(0);
     const [baselineRun, setBaselineRun] = useState<DemoRun | null>(null);
     const [comparisonRun, setComparisonRun] = useState<DemoRun | null>(null);
+    const [presetIds, setPresetIds] = useState({ a: "", b: "" });
 
     useEffect(() => {
         const controller = new AbortController();
@@ -239,6 +245,27 @@ export default function SimulationDemo() {
         }
     }
 
+    function addPreset(side: Side) {
+        const preset = presets.find(
+            (item) => item.profileId === presetIds[side]
+        );
+
+        if (!preset || combatants.length >= MAX_COMBATANTS) return;
+
+        // Each addition gets its own identity and editable copy of the stats.
+        const added = toCombatantDraft({
+            ...preset.stats,
+            id: crypto.randomUUID(),
+            side,
+        });
+
+        setCombatants((current) =>
+            current.length >= MAX_COMBATANTS ? current : [...current, added]
+        );
+
+        setResult(null);
+    }
+
     function updateCombatant(id: string, field: EditableCombatantField, value: string) {
         setCombatants((current) => current.map((combatant) =>
             combatant.id === id ? { ...combatant, [field]: value } : combatant
@@ -323,8 +350,46 @@ export default function SimulationDemo() {
                                 disabled={combatants.length >= MAX_COMBATANTS}
                                 onClick={() => addCombatant(side)}
                             >
-                                Add Combatant
+                                Add Custom Combatant
                             </button>
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                                <label htmlFor={"preset-" + side}>Preset</label>
+                                <select
+                                    id={"preset-" + side}
+                                    className="border px-2 py-1"
+                                    value={presetIds[side]}
+                                    disabled={presets.length === 0}
+                                    onChange={(event) => {
+                                        // Selecting a preset does not add it to the encounter.
+                                        event.stopPropagation();
+
+                                        const profileId = event.currentTarget.value;
+                                        setPresetIds((current) => ({
+                                            ...current,
+                                            [side]: profileId,
+                                        }));
+                                    }}
+                                >
+                                    <option value="">Choose a preset</option>
+                                    {presets.map((preset) => (
+                                        <option key={preset.profileId} value={preset.profileId}>
+                                            {preset.stats.name + " - HP " + preset.stats.startingHP + ", AC " + preset.stats.armorClass}
+                                        </option>
+                                    ))}
+                                </select>
+                                <button
+                                    type="button"
+                                    className="rounded border px-3 py-1 disabled:opacity-60"
+                                    disabled={
+                                        combatants.length >= MAX_COMBATANTS || !presets.some(
+                                            (item) => item.profileId === presetIds[side]
+                                        )
+                                    }
+                                    onClick={() => addPreset(side)}
+                                >
+                                    Add preset combatant
+                                </button>
+                            </div>
                         </section>
                     );
                 })}
