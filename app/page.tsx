@@ -3,7 +3,6 @@ import { connection } from "next/server";
 import { createSupabaseClient } from "@/lib/supabase";
 import type { CombatantPreset } from "@/lib/combat/presets";
 import SimulationDemo from "./simulation-demo";
-import { profile } from "console";
 
 async function EncounterWorkspace() {
   await connection();

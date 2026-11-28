@@ -323,6 +323,14 @@ export default function SimulationDemo({
     return (
         <section className="mt-10">
             <h2 className="mb-3 text-2x1 font-semibold">Encounter simulation</h2>
+            <p className="mb-3 text-sm">
+                SRD presets use basic attacks only. Movement, special abilities, and damage-type vulnerabilities
+                or immunities are not simulated.
+                {" "}
+                <a className="underline" href="/preset-sources.md">
+                    Preset sources and attribution
+                </a>
+            </p>
             <p className="mb-3">
                 {combatants.length} of {MAX_COMBATANTS} combatants. At least one per side.
             </p>
