@@ -47,7 +47,7 @@ function getInputChanges(
                 key: field,
                 label: "Side " + side.toUpperCase() + " targeting",
                 baseline: before === "random" ? "Random living opponent" : "Lowest current HP",
-                comparison: before === "random" ? "Random living opponent" : "Lowest current HP",
+                comparison: after === "random" ? "Random living opponent" : "Lowest current HP",
             });
         }
     }
