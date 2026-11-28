@@ -323,8 +323,14 @@ export async function POST(request: Request) {
         return Response.json({ error: "Could not save the run." }, { status: 500 });
     }
 
-    // Return the database ID only after Supabase confirms the save.
-    return Response.json({ runId: savedRun.id, trialCount, roundLimit, ...summary });
+    // Return saved inputs too, so new runs can be compared immediately.
+    return Response.json({
+        ...summary,
+        runId: savedRun.id,
+        trialCount,
+        roundLimit,
+        inputSnapshot: runEncounter,
+    });
 }
 
 export async function GET(request: Request) {

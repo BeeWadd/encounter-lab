@@ -7,6 +7,7 @@ import CombatantEditor, {
     type EditableCombatantField,
 } from "./combatant-editor";
 import type { CombatantInput, EncounterInput, Side } from "@/lib/combat/types";
+import EncounterInputComparison from "./encounter-input-comparison";
 
 
 type BatchSummary = ReturnType<typeof simulateBatch>;
@@ -538,6 +539,20 @@ export default function SimulationDemo() {
                     <p className="mt-3">
                         Select both runs to compare their results.
                     </p>
+                )}
+
+                {baselineRun && comparisonRun && (
+                    baselineRun.inputSnapshot && comparisonRun.inputSnapshot ? (
+                        <EncounterInputComparison
+                            baseline={baselineRun.inputSnapshot}
+                            comparison={comparisonRun.inputSnapshot}
+                        />
+                    ) : (
+                        <p className="mt-3">
+                            Saved inputs are unavailable for one of these selections.
+                            Reload the page and select both runs again.
+                        </p>
+                    )
                 )}
             </section>
 
